@@ -1,37 +1,5 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Formulário de Cadastro</title>
-    <script>
-        function validateForm() {
-            const isEditing = document.getElementById('editMode').value === 'true';
-            const name = document.getElementById('name').value;
-            const email = document.getElementById('email').value;
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-            if (!isEditing) {
-                if (name.trim() === '') {
-                    alert('Por favor, preencha o campo nome.');
-                    return false;
-                }
-
-                if (!emailRegex.test(email)) {
-                    alert('Por favor, insira um e-mail válido.');
-                    return false;
-                }
-            }
-
-            return true;
-        }
-    </script>
-</head>
-
-<body>
-    <h2>Cadastro de Usuário</h2>
-    <?php
+<?php
+session_start(); 
     function connectDatabase() {
         try {
             $conexao = new PDO("mysql:host=127.0.0.1:8889;dbname=armalite_db", "root", "root");
@@ -60,6 +28,9 @@
                 } else {
                     insertUser($conexao, $nome, $email);
                 }
+                $_SESSION['success_message'] = "Dados recebidos com sucesso! Nome: $nome, E-mail: $email";
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit();
             } else {
                 echo "<p style='color:red;'>Por favor, insira um e-mail válido.</p>";
             }
@@ -71,19 +42,20 @@
     function updateUser($conexao, $id, $nome, $email) {
         $query = $conexao->prepare("UPDATE users SET name = :name, email = :email, updated_at = NOW() WHERE id = :id");
         $query->execute(['name' => $nome, 'email' => $email, 'id' => $id]);
-        echo "<p style='color:green;'>Usuário atualizado com sucesso! Nome: $nome, E-mail: $email</p>";
+        $_SESSION['success_message'] = "Usuário atualizado com sucesso! Nome: $nome, E-mail: $email";
     }
 
     function insertUser($conexao, $nome, $email) {
         $query = $conexao->prepare("INSERT INTO users (name, email, created_at, updated_at) VALUES (:name, :email, NOW(), NOW())");
         $query->execute(['name' => $nome, 'email' => $email]);
-        echo "<p style='color:green;'>Dados recebidos com sucesso! Nome: $nome, E-mail: $email</p>";
+        $_SESSION['success_message'] ="Dados recebidos com sucesso! Nome: $nome, E-mail: $email";
+        
     }
 
     function deleteUser($conexao, $id) {
         $query = $conexao->prepare("UPDATE users SET deleted_at = NOW() WHERE id = :id");
         $query->execute(['id' => $id]);
-        echo "<p style='color:green;'>Usuário excluído com sucesso!</p>";
+        $_SESSION['success_message'] ="Usuário excluído com sucesso!</p>";
     }
 
     function listUsers($conexao) {
@@ -93,6 +65,7 @@
     }
 
     $conexao = connectDatabase();
+    $formSuccess = false;
 
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
         handlePostRequest($conexao);
@@ -107,8 +80,52 @@
     if (isset($_GET['edit'])) {
         $user = getUser($conexao, $_GET['edit']);
     }
-    ?>
+?>
 
+
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulário de Cadastro</title>
+    <script>
+        function validateForm() {
+            const isEditing = document.getElementById('editMode').value === 'true';
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (!isEditing) {
+                if (name.trim() === '') {
+                    alert('Por favor, preencha o campo nome.');
+                    return false;
+                }
+
+                if (!emailRegex.test(email)) {
+                    alert('Por favor, insira um e-mail válido.');
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function clearForm() {
+            document.getElementById('name').value = '';
+            document.getElementById('email').value = '';
+        }
+    </script>
+</head>
+
+<body>
+    <h2>Cadastro de Usuário</h2>
+    <?php
+    if (isset($_SESSION['success_message'])) {
+        echo "<p style='color:green;'>" . $_SESSION['success_message'] . "</p>";
+        unset($_SESSION['success_message']);
+    }
+    ?>
     <?php if ($user) : ?>
         <h2>Editar Usuário</h2>
         <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post" onsubmit="return validateForm();">
